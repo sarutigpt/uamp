@@ -18,10 +18,15 @@ package com.example.android.uamp
 
 import android.media.AudioManager
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
+import androidx.mediarouter.media.MediaControlIntent
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
+import androidx.mediarouter.media.MediaRouterParams
 import com.example.android.uamp.fragments.MediaItemFragment
 import com.example.android.uamp.media.MusicService
 import com.example.android.uamp.utils.Event
@@ -29,12 +34,15 @@ import com.example.android.uamp.utils.InjectorUtils
 import com.example.android.uamp.viewmodels.MainActivityViewModel
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
-import com.google.android.gms.dynamite.DynamiteModule
+
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var viewModel: MainActivityViewModel
     private var castContext: CastContext? = null
+    private lateinit var selector: MediaRouteSelector
+    private lateinit var router: MediaRouter
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +52,16 @@ class MainActivity : AppCompatActivity() {
         castContext = CastContext.getSharedInstance(this)
 
         setContentView(R.layout.activity_main)
+
+        router = MediaRouter.getInstance(this)
+        selector = MediaRouteSelector.Builder()
+            .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+            .build()
+        router.routerParams = MediaRouterParams.Builder().setTransferToLocalEnabled(true).build()
+        router.addCallback(
+            selector, MediaRouterCallback(),
+            MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
+        )
 
         // Since UAMP is a music player, the volume controls should adjust the music volume while
         // in the app.
@@ -118,4 +136,20 @@ class MainActivity : AppCompatActivity() {
     private fun getBrowseFragment(mediaId: String): MediaItemFragment? {
         return supportFragmentManager.findFragmentByTag(mediaId) as MediaItemFragment?
     }
+
+    private inner class MediaRouterCallback : MediaRouter.Callback() {
+        override fun onRouteSelected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            if (reason == MediaRouter.UNSELECT_REASON_ROUTE_CHANGED) {
+                Log.d(TAG, "Unselected because route changed, continue playback")
+            } else if (reason == MediaRouter.UNSELECT_REASON_STOPPED) {
+                Log.d(TAG, "Unselected because route was stopped, stop playback")
+            }
+        }
+    }
 }
+
+private const val TAG = "MainActivity"
