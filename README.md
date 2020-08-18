@@ -1,4 +1,4 @@
-Universal Android Music Player Sample
+odfUniversal Android Music Player Sample
 =====================================
 
 The goal of this sample is to show how to implement an audio media app that works
